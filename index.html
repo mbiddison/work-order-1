@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BIDDISON HOMES - Work Order Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 p-4 md:p-8">
+    <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
+        <!-- Clean Branded Header -->
+        <div class="bg-blue-900 -mx-6 -mt-6 p-6 text-white mb-6 flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold tracking-wide">BIDDISON HOMES</h1>
+                <p class="text-blue-200 text-sm">Work Order & Trade Partner Task Generator</p>
+            </div>
+            <div class="text-right">
+                <span class="text-xs bg-blue-800 border border-blue-600 px-3 py-1 rounded text-blue-100 font-medium">Official Form</span>
+            </div>
+        </div>
+
+        <form id="woForm" class="space-y-6">
+            <!-- Header Info -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Date Created</label>
+                    <input type="date" id="woDate" onchange="generateSequentialWONumber()" class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Complete By Date <span class="text-slate-400 font-normal">(Optional)</span></label>
+                    <input type="date" id="woDueDate" class="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-xs font-semibold text-slate-600 uppercase">Work Order #</label>
+                        <span id="woCountBadge" class="text-xs text-blue-700 bg-blue-50 px-2 py-0.5 rounded font-medium">Daily Sequence</span>
+                    </div>
+                    <input type="text" id="woNumber" readonly class="w-full border rounded p-2 text-sm bg-slate-50 font-mono font-semibold text-slate-700">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Trade Partner</label>
+                    <input type="text" id="tradePartner" list="partnerList" placeholder="Select or type trade partner..." class="w-full border rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500">
+                    <datalist id="partnerList"></datalist>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Supervisor</label>
+                    <select id="supervisor" onchange="updateNotesDefault()" class="w-full border rounded p-2 text-sm bg-white">
+                        <option value="James Johnson" selected>James Johnson</option>
+                        <option value="Mark Biddison">Mark Biddison</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Job Site Quick Select -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Job Site Address</label>
+                <div class="flex gap-2 mb-2">
+                    <input type="text" id="address" placeholder="Enter or select address..." class="flex-1 border rounded p-2 text-sm">
+                    <button type="button" onclick="saveCurrentAddress()" class="bg-slate-700 hover:bg-slate-800 text-white text-xs px-3 py-2 rounded font-medium flex-shrink-0">+ Save Quick Site</button>
+                </div>
+                
+                <div class="text-xs text-slate-500 mb-1 font-medium">Active Job Sites (Tap to select | Click ✕ to remove):</div>
+                <div id="jobSitesContainer" class="flex flex-wrap gap-2"></div>
+            </div>
+
+            <!-- Tasks Table -->
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-xs font-semibold text-slate-600 uppercase">Work Items / Tasks</label>
+                    <button type="button" onclick="addTaskRow()" class="text-xs bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-1 font-medium">+ Add Task</button>
+                </div>
+                <div id="tasksContainer" class="space-y-3"></div>
+            </div>
+
+            <!-- Photo Attachments Section (Camera & Gallery Options) -->
+            <div class="border-t pt-4">
+                <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+                    <label class="text-xs font-semibold text-slate-600 uppercase">Site Photos & Captions</label>
+                    <div class="flex gap-2">
+                        <!-- Camera Button -->
+                        <button type="button" onclick="document.getElementById('cameraInput').click()" class="text-xs bg-blue-800 hover:bg-blue-900 text-white rounded px-3 py-1.5 font-medium flex items-center gap-1">
+                            📷 Take Photo
+                        </button>
+                        <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoSelect(this)">
+
+                        <!-- Gallery Button -->
+                        <button type="button" onclick="document.getElementById('galleryInput').click()" class="text-xs bg-slate-700 hover:bg-slate-800 text-white rounded px-3 py-1.5 font-medium flex items-center gap-1">
+                            🖼️ Select from Gallery
+                        </button>
+                        <input type="file" id="galleryInput" accept="image/*" multiple class="hidden" onchange="handlePhotoSelect(this)">
+                    </div>
+                </div>
+                <div id="photoPreviews" class="space-y-3 mt-3"></div>
+            </div>
+
+            <!-- Special Notes -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Special Instructions / Notes</label>
+                <textarea id="notes" rows="3" class="w-full border rounded p-2 text-sm"></textarea>
+            </div>
+
+            <!-- Actions -->
+            <div class="pt-4 border-t">
+                <button type="button" id="copyBtn" onclick="handleCopyAction()" class="w-full bg-green-700 hover:bg-green-800 text-white py-3 rounded-lg font-semibold text-sm shadow flex justify-center items-center gap-2">
+                    <span>Copy Text for SMS / Email</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const APPS_SCRIPT_WEB_APP_URL ="https://script.google.com/macros/s/AKfycbxOkOCChVGq6ADeooXAy6QHc9O6XIo8Y26qMSdbXGnR2lYT8mmBtMIEiXFQIwfC5Rtb/exec";
+
+        let attachedPhotos = [];
+
+        function handlePhotoSelect(input) {
+            if (input.files && input.files.length > 0) {
+                Array.from(input.files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        attachedPhotos.push({
+                            name: file.name,
+                            data: e.target.result,
+                            caption: ''
+                        });
+                        renderPhotoPreviews();
+                    };
+                    reader.readAsDataURL(file);
+                });
+                input.value = '';
+            }
+        }
+
+        function renderPhotoPreviews() {
+            const container = document.getElementById('photoPreviews');
+            container.innerHTML = '';
+            attachedPhotos.forEach((photo, idx) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'flex gap-3 items-center bg-slate-50 p-2 rounded border border-slate-200';
+                wrapper.innerHTML = `
+                    <div class="w-16 h-16 rounded overflow-hidden bg-slate-200 flex-shrink-0">
+                        <img src="${photo.data}" class="w-full h-full object-cover">
+                    </div>
+                    <div class="flex-1">
+                        <input type="text" placeholder="Add verbiage/caption (e.g. Rear patio framing)..." value="${photo.caption}" onchange="attachedPhotos[${idx}].caption = this.value" class="w-full border rounded p-1.5 text-xs">
+                    </div>
+                    <button type="button" onclick="removePhoto(${idx})" class="text-red-600 hover:text-red-800 font-bold px-2 text-sm">✕</button>
+                `;
+                container.appendChild(wrapper);
+            });
+        }
+
+        function removePhoto(idx) {
+            attachedPhotos.splice(idx, 1);
+            renderPhotoPreviews();
+        }
+
+        async function saveToGoogleDrive(woNum, address, partner, dueDate, textSummary) {
+            if (!APPS_SCRIPT_WEB_APP_URL || APPS_SCRIPT_WEB_APP_URL.includes("YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL")) {
+                return null;
+            }
+
+            try {
+                const payload = {
+                    woNum: woNum,
+                    address: address,
+                    partner: partner,
+                    dueDate: dueDate,
+                    textSummary: textSummary,
+                    photos: attachedPhotos
+                };
+
+                const response = await fetch(APPS_SCRIPT_WEB_APP_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                return result;
+            } catch (err) {
+                console.error("Save to Google Drive error:", err);
+                return null;
+            }
+        }
+
+        function setTodayAsDefaultDate() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            document.getElementById('woDate').value = `${year}-${month}-${day}`;
+        }
+
+        async function handleCopyAction() {
+            const copyBtn = document.getElementById('copyBtn');
+            const originalBtnText = copyBtn.innerHTML;
+            
+            copyBtn.innerHTML = `⏳ Uploading Photos & Generating Links...`;
+            copyBtn.disabled = true;
+
+            const partner = document.getElementById('tradePartner').value || 'Trade Partner';
+            const addr = document.getElementById('address').value || 'Job Site';
+            const date = document.getElementById('woDate').value;
+            const dueDate = document.getElementById('woDueDate').value;
+            const woNum = document.getElementById('woNumber').value;
+            const supervisor = document.getElementById('supervisor').value;
+            savePartner(partner);
+
+            let txt = `BIDDISON HOMES - WORK ORDER (${woNum})\n`;
+            txt += `Date: ${date} | Address: ${addr}\n`;
+            if (dueDate) {
+                const [y, m, d] = dueDate.split('-');
+                txt += `COMPLETE BY: ${m}/${d}/${y}\n`;
+            }
+            txt += `Trade Partner: ${partner} | Supervisor: ${supervisor}\n\nTasks:\n`;
+
+            const rows = document.getElementById('tasksContainer').children;
+            Array.from(rows).forEach((row, idx) => {
+                const desc = row.querySelector('.task-desc').value;
+                const loc = row.querySelector('.task-loc').value;
+                if (desc) txt += `${idx + 1}. ${desc} ${loc ? '(' + loc + ')' : ''}\n`;
+            });
+
+            const notes = document.getElementById('notes').value;
+            if (notes) txt += `\nSpecial Instructions:\n${notes}\n`;
+
+            // Wait for Google Apps Script to upload and generate photo view links
+            const driveResult = await saveToGoogleDrive(woNum, addr, partner, dueDate, txt);
+
+            if (driveResult && driveResult.photoLinks && driveResult.photoLinks.length > 0) {
+                txt += `\nSite Photos:\n` + driveResult.photoLinks.join('\n') + `\n`;
+            }
+
+            await navigator.clipboard.writeText(txt);
+            copyBtn.innerHTML = originalBtnText;
+            copyBtn.disabled = false;
+            alert(`Work Order ${woNum} copied to clipboard! Photo links, Google Drive files, and Calendar events have been generated.`);
+
+            attachedPhotos = [];
+            renderPhotoPreviews();
+            incrementWOCounter();
+        }
+
+        function generateSequentialWONumber() {
+            const selectedDate = document.getElementById('woDate').value;
+            if (!selectedDate) return;
+
+            const dateFormatted = selectedDate.replace(/-/g, '');
+            const logKey = 'wo_log_' + dateFormatted;
+            let currentCount = parseInt(localStorage.getItem(logKey) || '0') + 1;
+            const seqStr = String(currentCount).padStart(2, '0');
+            
+            document.getElementById('woNumber').value = `WO-${dateFormatted}-${seqStr}`;
+            document.getElementById('woCountBadge').innerText = `Daily Sequence #${currentCount}`;
+        }
+
+        function incrementWOCounter() {
+            const selectedDate = document.getElementById('woDate').value;
+            if (!selectedDate) return;
+            const dateFormatted = selectedDate.replace(/-/g, '');
+            const logKey = 'wo_log_' + dateFormatted;
+            let currentCount = parseInt(localStorage.getItem(logKey) || '0') + 1;
+            localStorage.setItem(logKey, currentCount.toString());
+            generateSequentialWONumber();
+        }
+
+        const DEFAULT_SITES = ['1245 Phantom Rider Trail', '1061 Rainbow Drive', '1121 N Academy Ave', '4026 Morningside Dr'];
+
+        function getStoredSites() {
+            return JSON.parse(localStorage.getItem('wo_job_sites') || JSON.stringify(DEFAULT_SITES));
+        }
+
+        function renderJobSites() {
+            const sites = getStoredSites();
+            const container = document.getElementById('jobSitesContainer');
+            container.innerHTML = '';
+            sites.forEach(site => {
+                const badge = document.createElement('div');
+                badge.className = 'inline-flex items-center bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs rounded border border-slate-300 overflow-hidden';
+                badge.innerHTML = `
+                    <button type="button" onclick="setAddress('${site}')" class="px-2.5 py-1 text-left">${site}</button>
+                    <button type="button" onclick="removeJobSite('${site}')" class="px-1.5 py-1 text-slate-400 hover:text-red-600 hover:bg-slate-300 border-l border-slate-300 font-bold">✕</button>
+                `;
+                container.appendChild(badge);
+            });
+        }
+
+        function setAddress(addr) { document.getElementById('address').value = addr; }
+
+        function saveCurrentAddress() {
+            const addrInput = document.getElementById('address').value.trim();
+            if (!addrInput) { alert('Please type an address in the field first.'); return; }
+            let sites = getStoredSites();
+            if (!sites.includes(addrInput)) {
+                sites.push(addrInput);
+                localStorage.setItem('wo_job_sites', JSON.stringify(sites));
+                renderJobSites();
+            }
+        }
+
+        function removeJobSite(siteToRemove) {
+            let sites = getStoredSites().filter(s => s !== siteToRemove);
+            localStorage.setItem('wo_job_sites', JSON.stringify(sites));
+            renderJobSites();
+        }
+
+        function updateNotesDefault() {
+            const supervisor = document.getElementById('supervisor').value;
+            const firstName = supervisor.split(' ')[0];
+            document.getElementById('notes').value = `Please verify all work items above have been completed and job site has been cleaned and contact ${firstName} with any questions.`;
+        }
+
+        function addTaskRow(desc = '', loc = '') {
+            const container = document.getElementById('tasksContainer');
+            const index = container.children.length + 1;
+            const div = document.createElement('div');
+            div.className = 'flex gap-2 items-center bg-slate-50 p-2 rounded border';
+            div.innerHTML = `
+                <span class="text-xs font-bold w-6 text-center text-slate-500">${index}</span>
+                <input type="text" placeholder="Task description..." value="${desc}" class="task-desc flex-1 border rounded p-1 text-sm">
+                <input type="text" placeholder="Location" value="${loc}" class="task-loc w-28 border rounded p-1 text-sm">
+                <button type="button" onclick="this.parentElement.remove(); renumber();" class="text-red-500 hover:text-red-700 font-bold px-2">✕</button>
+            `;
+            container.appendChild(div);
+        }
+
+        function renumber() {
+            const rows = document.getElementById('tasksContainer').children;
+            Array.from(rows).forEach((row, idx) => { row.querySelector('span').innerText = idx + 1; });
+        }
+
+        function savePartner(name) {
+            if (!name) return;
+            let partners = JSON.parse(localStorage.getItem('wo_partners') || '["Gerardo Verastegui", "Gus", "Horacio", "Raul"]');
+            if (!partners.includes(name)) {
+                partners.push(name);
+                partners.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+                localStorage.setItem('wo_partners', JSON.stringify(partners));
+            }
+            updatePartnerDatalist();
+        }
+
+        function updatePartnerDatalist() {
+            let partners = JSON.parse(localStorage.getItem('wo_partners') || '["Gerardo Verastegui", "Gus", "Horacio", "Raul"]');
+            partners.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+            document.getElementById('partnerList').innerHTML = partners.map(p => `<option value="${p}">`).join('');
+        }
+
+        window.onload = function() {
+            setTodayAsDefaultDate();
+            generateSequentialWONumber();
+            renderJobSites();
+            updateNotesDefault();
+            updatePartnerDatalist();
+            addTaskRow(); addTaskRow(); addTaskRow();
+        };
+    </script>
+</body>
+</html>
