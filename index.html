@@ -231,16 +231,23 @@
             const notes = document.getElementById('notes').value;
             if (notes) txt += `\nSpecial Instructions:\n${notes}\n`;
 
+            // Wait explicitly for Apps Script to save photos and return direct view links
             const driveResult = await saveToGoogleDrive(woNum, addr, partner, dueDate, txt);
 
             if (driveResult && driveResult.photoLinks && driveResult.photoLinks.length > 0) {
                 txt += `\nSite Photos:\n` + driveResult.photoLinks.join('\n') + `\n`;
             }
 
-            await navigator.clipboard.writeText(txt);
+            // Copy final text directly to clipboard
+            try {
+                await navigator.clipboard.writeText(txt);
+                alert(`Work Order ${woNum} copied to clipboard! Ready to paste into SMS or Email.\n\nGoogle Drive files, photo links, and Calendar events have been created.`);
+            } catch (err) {
+                alert(`Work Order ${woNum} generated! Please copy text from clipboard.`);
+            }
+
             copyBtn.innerHTML = originalBtnText;
             copyBtn.disabled = false;
-            alert(`Work Order ${woNum} copied to clipboard! Photo links, Google Drive files, and Calendar events have been generated.`);
 
             attachedPhotos = [];
             renderPhotoPreviews();
