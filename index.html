@@ -105,22 +105,10 @@
                 <textarea id="notes" rows="3" class="w-full border rounded p-2 text-sm"></textarea>
             </div>
 
-            <!-- Output Box -->
-            <div id="outputContainer" class="hidden border-t pt-4 bg-amber-50 p-4 rounded-lg border border-amber-200">
-                <div class="flex justify-between items-center mb-1">
-                    <label class="block text-xs font-bold text-amber-900 uppercase">Generated Work Order Text & Links</label>
-                    <span class="text-xs text-amber-700 font-medium">Tap box to select text</span>
-                </div>
-                <textarea id="outputText" rows="8" readonly class="w-full border rounded p-2 text-xs font-mono bg-white text-slate-800 focus:ring-2 focus:ring-amber-500"></textarea>
-                <button type="button" onclick="manualCopyHighlight()" class="mt-2 w-full bg-amber-600 hover:bg-amber-700 text-white py-2 rounded text-xs font-bold">
-                    📋 Highlight Text for Manual Copy
-                </button>
-            </div>
-
             <!-- Actions -->
             <div class="pt-4 border-t">
                 <button type="button" id="copyBtn" onclick="handleCopyAction()" class="w-full bg-green-700 hover:bg-green-800 text-white py-3 rounded-lg font-semibold text-sm shadow flex justify-center items-center gap-2">
-                    <span>Generate & Copy Work Order</span>
+                    <span>Copy Text for SMS / Email</span>
                 </button>
             </div>
         </form>
@@ -131,51 +119,19 @@
 
         let attachedPhotos = [];
 
-        function compressAndResizeImage(file, callback) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = new Image();
-                img.onload = function() {
-                    let canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
-                    const maxDim = 1000;
-
-                    if (width > maxDim || height > maxDim) {
-                        if (width > height) {
-                            height = Math.round((height * maxDim) / width);
-                            width = maxDim;
-                        } else {
-                            width = Math.round((width * maxDim) / height);
-                            height = maxDim;
-                        }
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-                    
-                    // Compress JPEG to 60% quality to prevent phone RAM overflow
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-                    callback(dataUrl);
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-
         function handlePhotoSelect(input) {
             if (input.files && input.files.length > 0) {
                 Array.from(input.files).forEach(file => {
-                    compressAndResizeImage(file, function(compressedData) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
                         attachedPhotos.push({
                             name: file.name,
-                            data: compressedData,
+                            data: e.target.result,
                             caption: ''
                         });
                         renderPhotoPreviews();
-                    });
+                    };
+                    reader.readAsDataURL(file);
                 });
                 input.value = '';
             }
@@ -246,7 +202,7 @@
             const copyBtn = document.getElementById('copyBtn');
             const originalBtnText = copyBtn.innerHTML;
             
-            copyBtn.innerHTML = `⏳ Uploading & Generating Links...`;
+            copyBtn.innerHTML = `⏳ Uploading Photos & Generating Links...`;
             copyBtn.disabled = true;
 
             const partner = document.getElementById('tradePartner').value || 'Trade Partner';
@@ -275,49 +231,26 @@
             const notes = document.getElementById('notes').value;
             if (notes) txt += `\nSpecial Instructions:\n${notes}\n`;
 
-            // Process backend saving and get returned photo links
+            // Wait for Apps Script to upload photos and return direct links
             const driveResult = await saveToGoogleDrive(woNum, addr, partner, dueDate, txt);
 
             if (driveResult && driveResult.photoLinks && driveResult.photoLinks.length > 0) {
                 txt += `\nSite Photos:\n` + driveResult.photoLinks.join('\n') + `\n`;
             }
 
-            // Show output text container
-            const outputContainer = document.getElementById('outputContainer');
-            const outputText = document.getElementById('outputText');
-            outputContainer.classList.remove('hidden');
-            outputText.value = txt;
-
-            let systemCopied = false;
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                try {
-                    await navigator.clipboard.writeText(txt);
-                    systemCopied = true;
-                } catch (err) {
-                    systemCopied = false;
-                }
+            try {
+                await navigator.clipboard.writeText(txt);
+                alert(`Work Order ${woNum} copied to clipboard! Ready to paste into SMS or Email.`);
+            } catch (err) {
+                alert(`Work Order ${woNum} generated, but automatic clipboard copy failed.`);
             }
 
             copyBtn.innerHTML = originalBtnText;
             copyBtn.disabled = false;
 
-            if (systemCopied) {
-                alert(`Work Order ${woNum} generated & copied to clipboard! Ready to paste into SMS or Email.`);
-            } else {
-                manualCopyHighlight();
-                alert(`Work Order ${woNum} generated!\n\nThe text has been highlighted in the amber box below for manual copying.`);
-            }
-
             attachedPhotos = [];
             renderPhotoPreviews();
             incrementWOCounter();
-        }
-
-        function manualCopyHighlight() {
-            const outputText = document.getElementById('outputText');
-            outputText.focus();
-            outputText.select();
-            outputText.setSelectionRange(0, 999999);
         }
 
         function generateSequentialWONumber() {
