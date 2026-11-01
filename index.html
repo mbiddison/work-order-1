@@ -190,12 +190,12 @@
 
                 const response = await fetch(APPS_SCRIPT_WEB_APP_URL, {
                     method: 'POST',
-                    mode: 'no-cors',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify(payload)
                 });
 
-                return { status: "success" };
+                const result = await response.json();
+                return result;
             } catch (err) {
                 console.error("Save to Google Drive error:", err);
                 return null;
@@ -243,7 +243,11 @@
             const notes = document.getElementById('notes').value;
             if (notes) txt += `\nSpecial Instructions:\n${notes}\n`;
 
-            await saveToGoogleDrive(woNum, addr, partner, dueDate, txt);
+            const driveResult = await saveToGoogleDrive(woNum, addr, partner, dueDate, txt);
+
+            if (driveResult && driveResult.photoLinks && driveResult.photoLinks.length > 0) {
+                txt += `\nSite Photos:\n` + driveResult.photoLinks.join('\n') + `\n`;
+            }
 
             const outputContainer = document.getElementById('outputContainer');
             const outputText = document.getElementById('outputText');
