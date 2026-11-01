@@ -105,7 +105,7 @@
                 <textarea id="notes" rows="3" class="w-full border rounded p-2 text-sm"></textarea>
             </div>
 
-            <!-- iOS Output Display Container (Appears when generated) -->
+            <!-- iOS Output Display Container -->
             <div id="outputContainer" class="hidden border-t pt-4 bg-amber-50 p-4 rounded-lg border border-amber-200">
                 <div class="flex justify-between items-center mb-1">
                     <label class="block text-xs font-bold text-amber-900 uppercase">Generated Work Order Text & Links</label>
@@ -190,12 +190,12 @@
 
                 const response = await fetch(APPS_SCRIPT_WEB_APP_URL, {
                     method: 'POST',
+                    mode: 'no-cors',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify(payload)
                 });
 
-                const result = await response.json();
-                return result;
+                return { status: "success" };
             } catch (err) {
                 console.error("Save to Google Drive error:", err);
                 return null;
@@ -243,20 +243,13 @@
             const notes = document.getElementById('notes').value;
             if (notes) txt += `\nSpecial Instructions:\n${notes}\n`;
 
-            // Wait for Google Apps Script to upload photos and return links
-            const driveResult = await saveToGoogleDrive(woNum, addr, partner, dueDate, txt);
+            await saveToGoogleDrive(woNum, addr, partner, dueDate, txt);
 
-            if (driveResult && driveResult.photoLinks && driveResult.photoLinks.length > 0) {
-                txt += `\nSite Photos:\n` + driveResult.photoLinks.join('\n') + `\n`;
-            }
-
-            // Always display text in the output box for easy manual tap-to-copy on iOS
             const outputContainer = document.getElementById('outputContainer');
             const outputText = document.getElementById('outputText');
             outputContainer.classList.remove('hidden');
             outputText.value = txt;
 
-            // Attempt clipboard write
             let systemCopied = false;
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 try {
@@ -274,7 +267,7 @@
                 alert(`Work Order ${woNum} copied to clipboard! Ready to paste into SMS or Email.`);
             } else {
                 manualCopyHighlight();
-                alert(`Work Order ${woNum} generated with photo links!\n\nThe text has been highlighted below—tap "Copy" on your iPhone popup.`);
+                alert(`Work Order ${woNum} generated!\n\nThe text has been highlighted below—tap "Copy" on your iPhone popup.`);
             }
 
             attachedPhotos = [];
