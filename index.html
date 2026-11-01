@@ -105,10 +105,22 @@
                 <textarea id="notes" rows="3" class="w-full border rounded p-2 text-sm"></textarea>
             </div>
 
+            <!-- iOS Output Display Container (Appears when generated) -->
+            <div id="outputContainer" class="hidden border-t pt-4 bg-amber-50 p-4 rounded-lg border border-amber-200">
+                <div class="flex justify-between items-center mb-1">
+                    <label class="block text-xs font-bold text-amber-900 uppercase">Generated Work Order Text & Links</label>
+                    <span class="text-xs text-amber-700 font-medium">Tap text box & select "Copy"</span>
+                </div>
+                <textarea id="outputText" rows="8" readonly class="w-full border rounded p-2 text-xs font-mono bg-white text-slate-800 focus:ring-2 focus:ring-amber-500"></textarea>
+                <button type="button" onclick="manualCopyHighlight()" class="mt-2 w-full bg-amber-600 hover:bg-amber-700 text-white py-2 rounded text-xs font-bold">
+                    📋 Highlight Text for Copy
+                </button>
+            </div>
+
             <!-- Actions -->
             <div class="pt-4 border-t">
                 <button type="button" id="copyBtn" onclick="handleCopyAction()" class="w-full bg-green-700 hover:bg-green-800 text-white py-3 rounded-lg font-semibold text-sm shadow flex justify-center items-center gap-2">
-                    <span>Copy Text for SMS / Email</span>
+                    <span>Generate & Copy Work Order</span>
                 </button>
             </div>
         </form>
@@ -231,61 +243,50 @@
             const notes = document.getElementById('notes').value;
             if (notes) txt += `\nSpecial Instructions:\n${notes}\n`;
 
-            // 1. Wait for Apps Script to upload photos and return direct links
+            // Wait for Google Apps Script to upload photos and return links
             const driveResult = await saveToGoogleDrive(woNum, addr, partner, dueDate, txt);
 
             if (driveResult && driveResult.photoLinks && driveResult.photoLinks.length > 0) {
                 txt += `\nSite Photos:\n` + driveResult.photoLinks.join('\n') + `\n`;
             }
 
-            // 2. iOS-Compatible Copy Handler
-            let copySuccessful = false;
+            // Always display text in the output box for easy manual tap-to-copy on iOS
+            const outputContainer = document.getElementById('outputContainer');
+            const outputText = document.getElementById('outputText');
+            outputContainer.classList.remove('hidden');
+            outputText.value = txt;
 
+            // Attempt clipboard write
+            let systemCopied = false;
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 try {
                     await navigator.clipboard.writeText(txt);
-                    copySuccessful = true;
+                    systemCopied = true;
                 } catch (err) {
-                    copySuccessful = false;
+                    systemCopied = false;
                 }
-            }
-
-            if (!copySuccessful) {
-                const tempTextArea = document.createElement("textarea");
-                tempTextArea.value = txt;
-                tempTextArea.contentEditable = true;
-                tempTextArea.readOnly = false;
-                tempTextArea.style.position = "absolute";
-                tempTextArea.style.left = "-9999px";
-                document.body.appendChild(tempTextArea);
-
-                const range = document.createRange();
-                range.selectNodeContents(tempTextArea);
-                const selection = window.getSelection();
-                selection.removeAllRanges();
-                selection.addRange(range);
-                tempTextArea.setSelectionRange(0, 999999);
-
-                try {
-                    copySuccessful = document.execCommand("copy");
-                } catch (e) {
-                    copySuccessful = false;
-                }
-                document.body.removeChild(tempTextArea);
             }
 
             copyBtn.innerHTML = originalBtnText;
             copyBtn.disabled = false;
 
-            if (copySuccessful) {
+            if (systemCopied) {
                 alert(`Work Order ${woNum} copied to clipboard! Ready to paste into SMS or Email.`);
             } else {
-                alert(`Work Order ${woNum} generated! Please check permissions.`);
+                manualCopyHighlight();
+                alert(`Work Order ${woNum} generated with photo links!\n\nThe text has been highlighted below—tap "Copy" on your iPhone popup.`);
             }
 
             attachedPhotos = [];
             renderPhotoPreviews();
             incrementWOCounter();
+        }
+
+        function manualCopyHighlight() {
+            const outputText = document.getElementById('outputText');
+            outputText.focus();
+            outputText.select();
+            outputText.setSelectionRange(0, 999999);
         }
 
         function generateSequentialWONumber() {
