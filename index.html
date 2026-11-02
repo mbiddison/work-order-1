@@ -203,6 +203,7 @@
 
         async function saveToGoogleDrive(woNum, address, partner, dueDate, textSummary) {
             if (!APPS_SCRIPT_WEB_APP_URL || APPS_SCRIPT_WEB_APP_URL.includes("YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL")) {
+                alert("Error: Google Apps Script Web App URL is missing.");
                 return null;
             }
 
@@ -223,9 +224,14 @@
                 });
 
                 const result = await response.json();
+                if (result.status === "error") {
+                    alert("Google Apps Script Error: " + result.message);
+                    return null;
+                }
                 return result;
             } catch (err) {
                 console.error("Save to Google Drive error:", err);
+                alert("Connection Error: Failed to reach Google Apps Script. Check console.");
                 return null;
             }
         }
@@ -242,7 +248,6 @@
             const copyBtn = document.getElementById('copyBtn');
             const originalBtnText = copyBtn.innerHTML;
             
-            // Show loading state so you see it waiting for Drive/Email/Calendar
             copyBtn.innerHTML = `⏳ Uploading to Drive & Sending Email...`;
             copyBtn.disabled = true;
 
@@ -272,7 +277,7 @@
             const notes = document.getElementById('notes').value;
             if (notes) txt += `\nSpecial Instructions:\n${notes}\n`;
 
-            // CRITICAL: Await Google Apps Script response (Drive upload, Email, Calendar)
+            // Explicitly wait for Apps Script to finish processing Drive upload, Email, and Calendar
             const driveResult = await saveToGoogleDrive(woNum, addr, partner, dueDate, txt);
 
             if (driveResult && driveResult.photoLinks && driveResult.photoLinks.length > 0) {
@@ -375,7 +380,7 @@
 
         function updateNotesDefault() {
             const supervisor = document.getElementById('supervisor').value;
-            const firstName = supervisor.split(' ')[0];
+            const firstName = supervisor.supervisor ? supervisor : supervisor.split(' ')[0];
             document.getElementById('notes').value = `Please verify all work items above have been completed and job site has been cleaned and contact ${firstName} with any questions.`;
         }
 
