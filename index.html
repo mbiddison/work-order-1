@@ -105,10 +105,10 @@
                 <textarea id="notes" rows="3" class="w-full border rounded p-2 text-sm"></textarea>
             </div>
 
-            <!-- Hidden/Fallback Output Container (Only shows if automatic clipboard copy is blocked) -->
+            <!-- Output Display Container -->
             <div id="outputContainer" class="hidden border-t pt-4 bg-amber-50 p-4 rounded-lg border border-amber-200">
                 <div class="flex justify-between items-center mb-1">
-                    <label class="block text-xs font-bold text-amber-900 uppercase">Generated Work Order Text & Links (Manual Copy)</label>
+                    <label class="block text-xs font-bold text-amber-900 uppercase">Generated Work Order Text & Links</label>
                     <span class="text-xs text-amber-700 font-medium">Tap text box to select</span>
                 </div>
                 <textarea id="outputText" rows="8" readonly class="w-full border rounded p-2 text-xs font-mono bg-white text-slate-800 focus:ring-2 focus:ring-amber-500"></textarea>
@@ -242,7 +242,8 @@
             const copyBtn = document.getElementById('copyBtn');
             const originalBtnText = copyBtn.innerHTML;
             
-            copyBtn.innerHTML = `⏳ Generating & Uploading...`;
+            // Show loading state so you see it waiting for Drive/Email/Calendar
+            copyBtn.innerHTML = `⏳ Uploading to Drive & Sending Email...`;
             copyBtn.disabled = true;
 
             const partner = document.getElementById('tradePartner').value || 'Trade Partner';
@@ -271,16 +272,15 @@
             const notes = document.getElementById('notes').value;
             if (notes) txt += `\nSpecial Instructions:\n${notes}\n`;
 
-            // Wait for Google Apps Script to save files and return photo view links
+            // CRITICAL: Await Google Apps Script response (Drive upload, Email, Calendar)
             const driveResult = await saveToGoogleDrive(woNum, addr, partner, dueDate, txt);
 
             if (driveResult && driveResult.photoLinks && driveResult.photoLinks.length > 0) {
                 txt += `\nSite Photos:\n` + driveResult.photoLinks.join('\n') + `\n`;
             }
 
-            const outputContainer = document.getElementById('outputContainer');
-            const outputText = document.getElementById('outputText');
-            outputText.value = txt;
+            copyBtn.innerHTML = originalBtnText;
+            copyBtn.disabled = false;
 
             let systemCopied = false;
 
@@ -293,19 +293,16 @@
                 }
             }
 
-            copyBtn.innerHTML = originalBtnText;
-            copyBtn.disabled = false;
-
             if (systemCopied) {
-                // SUCCESS: Copied silently like yesterday. Do NOT show amber box on Android!
-                outputContainer.classList.add('hidden');
-                alert(`Work Order ${woNum} generated & copied to clipboard! Ready to paste.`);
+                alert(`Work Order ${woNum} generated, sent to Drive/Email/Calendar, & copied to clipboard!`);
             } else {
-                // FALLBACK for restrictive browsers (iOS Safari): Unhide amber box
+                const outputContainer = document.getElementById('outputContainer');
+                const outputText = document.getElementById('outputText');
                 outputContainer.classList.remove('hidden');
+                outputText.value = txt;
                 outputText.focus();
                 outputText.select();
-                alert(`Work Order ${woNum} generated!\n\nAutomatic copy was restricted by your browser. Please copy from the highlighted box below.`);
+                alert(`Work Order ${woNum} generated!\n\nPlease copy from the highlighted box below.`);
             }
 
             attachedPhotos = [];
@@ -391,7 +388,7 @@
                 <span class="text-xs font-bold w-6 text-center text-slate-500">${index}</span>
                 <input type="text" placeholder="Task description..." value="${desc}" class="task-desc flex-1 border rounded p-1 text-sm">
                 <input type="text" placeholder="Location" value="${loc}" class="task-loc w-28 border rounded p-1 text-sm">
-                <button type="button" onclick="this.parentElement.remove(); renumber();" class="text-red-500 hover:text-red-700 font-bold px-2">✕<span>
+                <button type="button" onclick="this.parentElement.remove(); renumber();" class="text-red-500 hover:text-red-700 font-bold px-2">✕</button>
             `;
             container.appendChild(div);
         }
